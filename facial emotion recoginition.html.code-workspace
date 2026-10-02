@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../machine learning"
+		}
+	],
+	"extensions": {
+		"recommendations": [
+			"ritwickdey.liveserver"
+		]
+	}
+}

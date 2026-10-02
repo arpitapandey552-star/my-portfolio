@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>~/code-help</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #15181D;
+    --surface: #1D2129;
+    --surface-raised: #242832;
+    --border: #2E333D;
+    --text: #E9E5DA;
+    --text-dim: #8A8F98;
+    --amber: #E0A445;
+    --teal: #6FB89E;
+    --teal-dim: #3E6B5B;
+    --red: #D9695A;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* title bar */
+  .titlebar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 10px 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink:0;
+  }
+  .titlebar-path{
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+  .titlebar-path .sep{ color: var(--border); margin: 0 4px; }
+  .titlebar-path .user{ color: var(--teal); }
+  .titlebar-actions{ display:flex; gap: 10px; align-items:center; }
+  .status-dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--teal);
+    box-shadow: 0 0 0 3px rgba(111,184,158,0.12);
+  }
+  .clear-btn{
+    background:transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor:pointer;
+    letter-spacing: 0.03em;
+  }
+  .clear-btn:hover{ border-color: var(--text-dim); color: var(--text); }
+
+  /* main scroll area */
+  .thread{
+    flex:1;
+    overflow-y:auto;
+    padding: 24px 18px 8px;
+  }
+  .thread::-webkit-scrollbar{ width: 10px; }
+  .thread::-webkit-scrollbar-thumb{ background: var(--surface-raised); border-radius: 6px; }
+  .thread::-webkit-scrollbar-track{ background: transparent; }
+
+  .wrap{ max-width: 780px; margin: 0 auto; }
+
+  .intro{
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 1.8;
+    padding-bottom: 22px;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 22px;
+  }
+  .intro .headline{
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .intro .headline .blink{
+    display:inline-block;
+    width: 8px; height: 15px;
+    background: var(--amber);
+    margin-left: 6px;
+    vertical-align: -2px;
+    animation: blink 1.1s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .msg{
+    display:flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items:flex-start;
+  }
+  .prompt{
+    flex-shrink:0;
+    width: 20px;
+    font-weight:700;
+    font-size: 14px;
+    padding-top: 2px;
+  }
+  .prompt.user{ color: var(--amber); }
+  .prompt.bot{ color: var(--teal); }
+  .bubble{
+    flex:1;
+    min-width:0;
+    font-size: 14px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .msg.user .bubble{ color: var(--text); }
+  .msg.bot .bubble{ color: #D8D4C8; }
+
+  .bubble p{ margin: 0 0 10px; }
+  .bubble p:last-child{ margin-bottom:0; }
+  .bubble code.inline{
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: var(--teal);
+  }
+
+  .codeblock{
+    background: #101317;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 10px 0;
+    overflow:hidden;
+  }
+  .codeblock-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding: 6px 12px;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .copy-btn{
+    background:transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    cursor:pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .copy-btn:hover{ color: var(--teal); background: rgba(111,184,158,0.08); }
+  .codeblock pre{
+    margin:0;
+    padding: 12px 14px;
+    overflow-x:auto;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #DCE4E0;
+  }
+  .codeblock::-webkit-scrollbar{ height: 8px; }
+
+  .thinking{
+    display:flex;
+    gap: 4px;
+    padding-top: 4px;
+  }
+  .thinking span{
+    width:5px; height:5px; border-radius:50%;
+    background: var(--teal-dim);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .thinking span:nth-child(2){ animation-delay: 0.15s; }
+  .thinking span:nth-child(3){ animation-delay: 0.3s; }
+  @keyframes pulse{ 0%,80%,100%{ opacity:0.3; } 40%{ opacity:1; } }
+
+  .error-note{
+    color: var(--red);
+    font-size: 13px;
+    border: 1px solid rgba(217,105,90,0.35);
+    background: rgba(217,105,90,0.08);
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+
+  /* input area */
+  .inputbar{
+    flex-shrink:0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 14px 18px 18px;
+  }
+  .inputbar-inner{
+    max-width: 780px;
+    margin: 0 auto;
+    display:flex;
+    align-items:flex-end;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 10px 10px 14px;
+  }
+  .inputbar-inner:focus-within{ border-color: var(--teal-dim); }
+  .inputbar-inner .prompt-glyph{
+    color: var(--amber);
+    font-weight:700;
+    font-size: 14px;
+    padding-bottom: 3px;
+  }
+  #composer{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    resize:none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    max-height: 160px;
+    padding: 3px 0;
+  }
+  #composer::placeholder{ color: var(--text-dim); }
+  .send-btn{
+    background: var(--teal-dim);
+    border: none;
+    color: #E8F4EF;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor:pointer;
+    letter-spacing: 0.03em;
+    flex-shrink:0;
+  }
+  .send-btn:hover:not(:disabled){ background: var(--teal); color: #0E1512; }
+  .send-btn:disabled{ opacity: 0.4; cursor:not-allowed; }
+  .hint{
+    max-width: 780px;
+    margin: 8px auto 0;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+
+  @media (max-width: 600px){
+    .thread{ padding: 18px 12px 8px; }
+    .inputbar{ padding: 12px 12px 14px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="titlebar">
+    <div class="titlebar-path"><span class="user">guest</span><span class="sep">~</span>code-help<span class="sep">·</span>zsh</div>
+    <div class="titlebar-actions">
+      <div class="status-dot" title="ready"></div>
+      <button class="clear-btn" id="clearBtn">clear</button>
+    </div>
+  </div>
+
+  <div class="thread" id="thread">
+    <div class="wrap">
+      <div class="intro">
+        <div class="headline">coding help, on tap<span class="blink"></span></div>
+        ask about a bug, a design decision, an unfamiliar API, or paste a stack trace. answers come with runnable code where it helps.
+      </div>
+      <div id="messages"></div>
+    </div>
+  </div>
+
+  <div class="inputbar">
+    <div class="inputbar-inner">
+      <span class="prompt-glyph">$</span>
+      <textarea id="composer" rows="1" placeholder="describe the bug, paste an error, or ask a question..."></textarea>
+      <button class="send-btn" id="sendBtn">run →</button>
+    </div>
+    <div class="hint">enter to send · shift+enter for a new line</div>
+  </div>
+
+<script>
+const SYSTEM_PROMPT = `You are a sharp, efficient coding assistant embedded in a developer tool called code-help.
+Help with debugging, writing code, explaining unfamiliar APIs, reviewing snippets, and reasoning through design decisions.
+Be direct and concise. Prefer showing corrected/working code over long prose explanations.
+Always use fenced code blocks with a language tag (e.g. \`\`\`python) for any code, commands, or file contents.
+When fixing a bug, briefly state the root cause in one line before the fix.
+Ask a clarifying question only if the request is truly ambiguous; otherwise make a reasonable assumption and proceed.`;
+
+const messagesEl = document.getElementById('messages');
+const threadEl = document.getElementById('thread');
+const composer = document.getElementById('composer');
+const sendBtn = document.getElementById('sendBtn');
+const clearBtn = document.getElementById('clearBtn');
+
+let history = [];
+
+function scrollToBottom(){
+  threadEl.scrollTop = threadEl.scrollHeight;
+}
+
+function escapeHtml(str){
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Minimal renderer: fenced code blocks -> styled blocks with copy button,
+// inline `code` -> inline code, rest -> paragraphs.
+function renderContent(container, text){
+  const parts = text.split(/```/g);
+  parts.forEach((part, i) => {
+    if (i % 2 === 1){
+      const firstNewline = part.indexOf('\n');
+      let lang = 'text';
+      let code = part;
+      if (firstNewline !== -1){
+        const maybeLang = part.slice(0, firstNewline).trim();
+        if (maybeLang && !maybeLang.includes(' ')){
+          lang = maybeLang;
+          code = part.slice(firstNewline + 1);
+        }
+      }
+      code = code.replace(/\n$/, '');
+      const block = document.createElement('div');
+      block.className = 'codeblock';
+      block.innerHTML = `
+        <div class="codeblock-head">
+          <span>${escapeHtml(lang)}</span>
+          <button class="copy-btn">copy</button>
+        </div>
+        <pre><code></code></pre>
+      `;
+      block.querySelector('code').textContent = code;
+      const copyBtn = block.querySelector('.copy-btn');
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(code).then(() => {
+          copyBtn.textContent = 'copied';
+          setTimeout(() => copyBtn.textContent = 'copy', 1200);
+        });
+      });
+      container.appendChild(block);
+    } else if (part.trim()){
+      part.split(/\n{2,}/).forEach(paragraph => {
+        if (!paragraph.trim()) return;
+        const p = document.createElement('p');
+        const withInline = escapeHtml(paragraph).replace(/`([^`]+)`/g, '<code class="inline">$1</code>');
+        p.innerHTML = withInline.replace(/\n/g, '<br>');
+        container.appendChild(p);
+      });
+    }
+  });
+}
+
+function addMessage(role, text){
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  const prompt = document.createElement('div');
+  prompt.className = `prompt ${role === 'user' ? 'user' : 'bot'}`;
+  prompt.textContent = role === 'user' ? '$' : '»';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  renderContent(bubble, text);
+  msg.appendChild(prompt);
+  msg.appendChild(bubble);
+  messagesEl.appendChild(msg);
+  scrollToBottom();
+  return bubble;
+}
+
+function addThinking(){
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.id = 'thinking-msg';
+  msg.innerHTML = `
+    <div class="prompt bot">»</div>
+    <div class="thinking"><span></span><span></span><span></span></div>
+  `;
+  messagesEl.appendChild(msg);
+  scrollToBottom();
+}
+
+function removeThinking(){
+  const el = document.getElementById('thinking-msg');
+  if (el) el.remove();
+}
+
+function addError(text){
+  const note = document.createElement('div');
+  note.className = 'error-note';
+  note.textContent = text;
+  messagesEl.appendChild(note);
+  scrollToBottom();
+}
+
+async function sendMessage(){
+  const text = composer.value.trim();
+  if (!text) return;
+
+  addMessage('user', text);
+  history.push({ role: 'user', content: text });
+  composer.value = '';
+  composer.style.height = 'auto';
+  sendBtn.disabled = true;
+  addThinking();
+
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: history
+      })
+    });
+
+    const data = await response.json();
+    removeThinking();
+
+    if (!response.ok){
+      const msg = (data && data.error && data.error.message) || 'request failed';
+      addError(`error: ${msg}`);
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const replyText = (data.content || [])
+      .filter(block => block.type === 'text')
+      .map(block => block.text)
+      .join('\n');
+
+    if (replyText){
+      addMessage('bot', replyText);
+      history.push({ role: 'assistant', content: replyText });
+    } else {
+      addError('error: empty response');
+    }
+  } catch(err){
+    removeThinking();
+    addError(`error: ${err.message || 'network failure'}`);
+  } finally {
+    sendBtn.disabled = false;
+    composer.focus();
+  }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+
+composer.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+composer.addEventListener('input', () => {
+  composer.style.height = 'auto';
+  composer.style.height = Math.min(composer.scrollHeight, 160) + 'px';
+});
+
+clearBtn.addEventListener('click', () => {
+  history = [];
+  messagesEl.innerHTML = '';
+});
+</script>
+</body>
+</html>

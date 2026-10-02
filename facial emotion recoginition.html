@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Lab — Facial Affect Readout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<style>
+  :root{
+    --bg: #0E1116;
+    --panel: #161B22;
+    --panel-2: #1D2430;
+    --border: #2A3341;
+    --text: #E8ECF1;
+    --muted: #7C8798;
+    --cyan: #4FD8C4;
+    --amber: #F2A65A;
+    --red: #E8636B;
+    --violet: #9C8CF5;
+
+    --c-neutral: #7C8798;
+    --c-happy: #4FD8C4;
+    --c-sad: #6E8FBF;
+    --c-angry: #E8636B;
+    --c-fearful: #9C8CF5;
+    --c-disgusted: #C98A4B;
+    --c-surprised: #F2C94C;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap{
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 20px 56px;
+  }
+
+  header{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 18px;
+  }
+
+  .eyebrow{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+
+  h1{
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .status-block{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .status-block .dot{
+    display:inline-block;
+    width:7px; height:7px;
+    border-radius:50%;
+    background: var(--muted);
+    margin-right:6px;
+    vertical-align: 1px;
+  }
+  .status-block.live .dot{ background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  .status-block.error .dot{ background: var(--red); }
+
+  .grid{
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 18px;
+  }
+
+  @media (max-width: 760px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .panel-label{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 12px;
+  }
+
+  .video-stage{
+    position: relative;
+    background: #05070A;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 4/3;
+  }
+
+  video, canvas.overlay{
+    position:absolute;
+    top:0; left:0;
+    width:100%;
+    height:100%;
+    object-fit: cover;
+  }
+
+  video{ transform: scaleX(-1); }
+
+  .stage-empty{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction: column;
+    gap: 14px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    text-align:center;
+    padding: 20px;
+  }
+
+  button{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    background: var(--cyan);
+    color: #0A1210;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform .1s ease, filter .15s ease;
+  }
+  button:hover{ filter: brightness(1.08); }
+  button:active{ transform: scale(0.97); }
+  button.stop{ background: var(--red); }
+  button:disabled{ background: var(--border); color: var(--muted); cursor: default; }
+
+  .controls-row{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .privacy-note{
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* bars */
+  .bar-row{
+    display: grid;
+    grid-template-columns: 84px 1fr 46px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .bar-row .label{
+    font-size: 12.5px;
+    color: var(--text);
+    text-transform: capitalize;
+  }
+  .bar-track{
+    height: 10px;
+    background: var(--panel-2);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .bar-fill{
+    height: 100%;
+    width: 0%;
+    border-radius: 6px;
+    transition: width .25s ease;
+  }
+  .bar-row .pct{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* gauge */
+  .gauge-wrap{
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    margin-top: 6px;
+  }
+  .gauge-readout{
+    text-align:center;
+    margin-top: -8px;
+  }
+  .gauge-readout .val{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 34px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .gauge-readout .lab{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .gauge-caption{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align:center;
+    margin-top: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  /* timeline */
+  .timeline-panel{
+    grid-column: 1 / -1;
+  }
+  #timeline{
+    width: 100%;
+    height: 46px;
+    display:block;
+    border-radius: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+  }
+  .legend{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--muted);
+    text-transform: capitalize;
+  }
+  .swatch{
+    width: 9px; height: 9px;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">Signal Lab — 01</p>
+      <h1>Facial Affect Readout</h1>
+    </div>
+    <div class="status-block" id="statusBlock"><span class="dot"></span><span id="statusText">Awaiting start</span></div>
+  </header>
+
+  <div class="grid">
+
+    <div class="panel">
+      <p class="panel-label">Live Feed</p>
+      <div class="video-stage" id="videoStage">
+        <video id="video" muted playsinline></video>
+        <canvas class="overlay" id="overlay"></canvas>
+        <div class="stage-empty" id="stageEmpty">
+          Camera is off.<br>Start the session to begin reading facial signals.
+        </div>
+      </div>
+      <div class="controls-row">
+        <button id="toggleBtn">Start session</button>
+      </div>
+      <p class="privacy-note">Everything runs locally in this browser tab. Your video is never uploaded or sent anywhere — only the model files load from a CDN once, at the start.</p>
+    </div>
+
+    <div class="panel">
+      <p class="panel-label">Signal Breakdown</p>
+      <div id="bars"></div>
+
+      <div class="gauge-wrap">
+        <svg id="gauge" viewBox="0 0 300 175" width="100%" style="max-width:280px">
+          <path id="gaugeArc" d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke="#2A3341" stroke-width="10" stroke-linecap="round"/>
+          <g id="ticks"></g>
+          <line id="needle" x1="150" y1="150" x2="150" y2="40" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="150" cy="150" r="6" fill="var(--text)"/>
+        </svg>
+        <div class="gauge-readout">
+          <div class="val" id="gaugeVal" style="color:var(--muted)">—</div>
+          <div class="lab" id="gaugeLab">no reading</div>
+        </div>
+        <p class="gauge-caption">arranged low &rarr; high valence, left to right</p>
+      </div>
+    </div>
+
+    <div class="panel timeline-panel">
+      <p class="panel-label">Dominant Emotion — Rolling History</p>
+      <canvas id="timeline"></canvas>
+      <div class="legend" id="legend"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const EMOTIONS = ['neutral','happy','sad','angry','fearful','disgusted','surprised'];
+const COLORS = {
+  neutral:   getVar('--c-neutral'),
+  happy:     getVar('--c-happy'),
+  sad:       getVar('--c-sad'),
+  angry:     getVar('--c-angry'),
+  fearful:   getVar('--c-fearful'),
+  disgusted: getVar('--c-disgusted'),
+  surprised: getVar('--c-surprised'),
+};
+function getVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// gauge arranged left(negative) -> right(positive)
+const GAUGE_ORDER = ['angry','disgusted','fearful','sad','neutral','surprised','happy'];
+
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const octx = overlay.getContext('2d');
+const stageEmpty = document.getElementById('stageEmpty');
+const toggleBtn = document.getElementById('toggleBtn');
+const statusBlock = document.getElementById('statusBlock');
+const statusText = document.getElementById('statusText');
+const barsEl = document.getElementById('bars');
+const gaugeVal = document.getElementById('gaugeVal');
+const gaugeLab = document.getElementById('gaugeLab');
+const needle = document.getElementById('needle');
+const ticksG = document.getElementById('ticks');
+const timeline = document.getElementById('timeline');
+const tctx = timeline.getContext('2d');
+const legend = document.getElementById('legend');
+
+let stream = null;
+let running = false;
+let modelsLoaded = false;
+let detectTimer = null;
+let needleAngle = 90; // degrees, 180=left, 0=right
+let needleTarget = 90;
+let rafId = null;
+
+const history = [];
+const HISTORY_LEN = 160;
+
+// build bar rows
+EMOTIONS.forEach(e => {
+  const row = document.createElement('div');
+  row.className = 'bar-row';
+  row.innerHTML = `
+    <div class="label">${e}</div>
+    <div class="bar-track"><div class="bar-fill" id="fill-${e}" style="background:${COLORS[e]}"></div></div>
+    <div class="pct" id="pct-${e}">0%</div>
+  `;
+  barsEl.appendChild(row);
+});
+
+// build legend
+GAUGE_ORDER.forEach(e => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML = `<span class="swatch" style="background:${COLORS[e]}"></span>${e}`;
+  legend.appendChild(item);
+});
+
+// build gauge ticks
+function angleForIndex(i){
+  return 180 - (i / (GAUGE_ORDER.length - 1)) * 180;
+}
+GAUGE_ORDER.forEach((e, i) => {
+  const ang = angleForIndex(i) * Math.PI / 180;
+  const cx = 150, cy = 150, r = 120;
+  const x = cx + r * Math.cos(ang);
+  const y = cy - r * Math.sin(ang);
+  const tick = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  tick.setAttribute('cx', x);
+  tick.setAttribute('cy', y);
+  tick.setAttribute('r', 4);
+  tick.setAttribute('fill', COLORS[e]);
+  ticksG.appendChild(tick);
+});
+
+function setStatus(text, mode){
+  statusText.textContent = text;
+  statusBlock.className = 'status-block' + (mode ? ' ' + mode : '');
+}
+
+function resizeTimeline(){
+  const rect = timeline.getBoundingClientRect();
+  timeline.width = rect.width * devicePixelRatio;
+  timeline.height = rect.height * devicePixelRatio;
+  drawTimeline();
+}
+window.addEventListener('resize', resizeTimeline);
+
+function drawTimeline(){
+  const w = timeline.width, h = timeline.height;
+  tctx.clearRect(0,0,w,h);
+  const slotW = w / HISTORY_LEN;
+  history.forEach((color, i) => {
+    tctx.fillStyle = color || '#2A3341';
+    tctx.fillRect(i * slotW, 0, Math.ceil(slotW) + 1, h);
+  });
+  for(let i = history.length; i < HISTORY_LEN; i++){
+    tctx.fillStyle = '#1D2430';
+    tctx.fillRect(i * slotW, 0, Math.ceil(slotW) + 1, h);
+  }
+}
+
+function pushHistory(color){
+  history.push(color);
+  if(history.length > HISTORY_LEN) history.shift();
+  drawTimeline();
+}
+
+async function loadModels(){
+  setStatus('Loading models…');
+  const MODEL_URL = 'https://cdn.jsdelivr.net/gh/vladmandic/face-api/model';
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+  ]);
+  modelsLoaded = true;
+}
+
+async function startSession(){
+  toggleBtn.disabled = true;
+  try{
+    if(!modelsLoaded){
+      await loadModels();
+    }
+    setStatus('Requesting camera…');
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    stageEmpty.style.display = 'none';
+    resizeOverlay();
+    running = true;
+    toggleBtn.textContent = 'Stop session';
+    toggleBtn.classList.add('stop');
+    setStatus('Live — reading signal', 'live');
+    detectLoop();
+  }catch(err){
+    setStatus('Camera access failed', 'error');
+    console.error(err);
+  }finally{
+    toggleBtn.disabled = false;
+  }
+}
+
+function stopSession(){
+  running = false;
+  if(detectTimer) clearTimeout(detectTimer);
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  video.srcObject = null;
+  octx.clearRect(0,0,overlay.width, overlay.height);
+  stageEmpty.style.display = 'flex';
+  toggleBtn.textContent = 'Start session';
+  toggleBtn.classList.remove('stop');
+  setStatus('Session stopped');
+  resetReadout();
+}
+
+function resetReadout(){
+  EMOTIONS.forEach(e => {
+    document.getElementById(`fill-${e}`).style.width = '0%';
+    document.getElementById(`pct-${e}`).textContent = '0%';
+  });
+  gaugeVal.textContent = '—';
+  gaugeVal.style.color = 'var(--muted)';
+  gaugeLab.textContent = 'no reading';
+  needleTarget = 90;
+}
+
+function resizeOverlay(){
+  const rect = video.getBoundingClientRect();
+  overlay.width = rect.width;
+  overlay.height = rect.height;
+}
+
+toggleBtn.addEventListener('click', () => {
+  if(running) stopSession(); else startSession();
+});
+
+async function detectLoop(){
+  if(!running) return;
+  resizeOverlay();
+  try{
+    const result = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+      .withFaceExpressions();
+
+    octx.clearRect(0,0,overlay.width, overlay.height);
+
+    if(result){
+      const box = result.detection.box;
+      const scaleX = overlay.width / video.videoWidth;
+      const scaleY = overlay.height / video.videoHeight;
+      // mirror x because video is flipped visually
+      const mirroredX = overlay.width - (box.x + box.width) * scaleX;
+      octx.strokeStyle = getVar('--cyan');
+      octx.lineWidth = 2;
+      octx.strokeRect(mirroredX, box.y * scaleY, box.width * scaleX, box.height * scaleY);
+
+      updateReadout(result.expressions);
+      setStatus('Live — reading signal', 'live');
+    } else {
+      setStatus('Live — no face detected', 'live');
+    }
+  }catch(e){
+    console.error(e);
+  }
+
+  detectTimer = setTimeout(detectLoop, 220);
+}
+
+function updateReadout(expressions){
+  let top = null, topVal = -1;
+  EMOTIONS.forEach(e => {
+    const v = expressions[e] || 0;
+    document.getElementById(`fill-${e}`).style.width = `${Math.round(v*100)}%`;
+    document.getElementById(`pct-${e}`).textContent = `${Math.round(v*100)}%`;
+    if(v > topVal){ topVal = v; top = e; }
+  });
+
+  gaugeVal.textContent = `${Math.round(topVal*100)}%`;
+  gaugeVal.style.color = COLORS[top];
+  gaugeLab.textContent = top;
+
+  const idx = GAUGE_ORDER.indexOf(top);
+  needleTarget = angleForIndex(idx);
+
+  pushHistory(COLORS[top]);
+}
+
+function animateNeedle(){
+  needleAngle += (needleTarget - needleAngle) * 0.12;
+  const rad = needleAngle * Math.PI / 180;
+  const len = 100;
+  const x2 = 150 + len * Math.cos(rad);
+  const y2 = 150 - len * Math.sin(rad);
+  needle.setAttribute('x2', x2);
+  needle.setAttribute('y2', y2);
+  rafId = requestAnimationFrame(animateNeedle);
+}
+
+resizeTimeline();
+animateNeedle();
+</script>
+</body>
+</html>
